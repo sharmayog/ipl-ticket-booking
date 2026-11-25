@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import BookingSummary from './BookingSummary'
-import { MATCHES, STANDS } from '../data'
+import { STANDS } from '../data'
 
 const EMPTY = { name: '', email: '', phone: '', delivery: 'email', insurance: false, terms: false }
+const EMPTY_SELECTION = { matchId: '', stand: 'General', qty: 1 }
 
-export default function BookingForm({ selection, setSelection, onConfirm, showToast }) {
+export default function BookingForm({ matches, selection, setSelection, onConfirm, showToast }) {
   const [details, setDetails] = useState(EMPTY)
+  const [saving, setSaving] = useState(false)
 
-  const match = MATCHES.find((m) => m.id === Number(selection.matchId)) || null
+  const match = matches.find((m) => m.id === Number(selection.matchId)) || null
+  const maxQty = match ? Math.max(1, Math.min(6, match.availableSeats)) : 6
 
   const setField = (e) => {
     const { name, type, value, checked } = e.target
@@ -16,7 +19,7 @@ export default function BookingForm({ selection, setSelection, onConfirm, showTo
 
   const changeMatch = (e) => {
     setSelection((s) => ({ ...s, matchId: e.target.value }))
-    const m = MATCHES.find((x) => x.id === Number(e.target.value))
+    const m = matches.find((x) => x.id === Number(e.target.value))
     if (m) showToast(`Summary updated: ${m.teams[0]} vs ${m.teams[1]}`, 'info')
   }
 
@@ -30,29 +33,35 @@ export default function BookingForm({ selection, setSelection, onConfirm, showTo
     if (e.target.value !== '') showToast('Quantity updated', 'info')
   }
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault() // browser HTML5 validation has already passed at this point
-    const price = match.prices[selection.stand]
-    onConfirm({
-      id: Date.now(),
+    if (!match || saving) return
+    setSaving(true)
+    const qty = Number(selection.qty)
+    const ok = await onConfirm({
+      matchId: match.id,
       ref: 'IPL' + Math.floor(100000 + Math.random() * 900000),
       match: `${match.teams[0]} vs ${match.teams[1]}`,
       venue: match.venue,
       date: match.date,
       stand: selection.stand,
-      qty: Number(selection.qty),
-      total: price * Number(selection.qty),
+      qty,
+      total: match.prices[selection.stand] * qty,
       name: details.name.trim(),
       email: details.email.trim(),
       phone: details.phone,
     })
-    setDetails(EMPTY)
-    setSelection({ matchId: '', stand: 'General', qty: 1 })
+    setSaving(false)
+    if (ok) {
+      // only clear the form when the booking really saved
+      setDetails(EMPTY)
+      setSelection(EMPTY_SELECTION)
+    }
   }
 
   const reset = () => {
     setDetails(EMPTY)
-    setSelection({ matchId: '', stand: 'General', qty: 1 })
+    setSelection(EMPTY_SELECTION)
     showToast('Form reset', 'info')
   }
 
@@ -66,9 +75,10 @@ export default function BookingForm({ selection, setSelection, onConfirm, showTo
               Match
               <select name="match" required value={selection.matchId} onChange={changeMatch}>
                 <option value="" disabled>Select a match</option>
-                {MATCHES.map((m) => (
-                  <option key={m.id} value={m.id}>
+                {matches.map((m) => (
+                  <option key={m.id} value={m.id} disabled={m.availableSeats <= 0}>
                     #{m.id} {m.teams[0]} vs {m.teams[1]}
+                    {m.availableSeats <= 0 ? ' (Sold out)' : ` (${m.availableSeats} seats left)`}
                   </option>
                 ))}
               </select>
@@ -82,13 +92,13 @@ export default function BookingForm({ selection, setSelection, onConfirm, showTo
             </label>
 
             <label>
-              Number of Tickets (1–6)
+              Number of Tickets (1–{maxQty})
               <input
                 type="number"
                 name="qty"
                 required
                 min="1"
-                max="6"
+                max={maxQty}
                 value={selection.qty}
                 onChange={changeQty}
               />
@@ -163,7 +173,9 @@ export default function BookingForm({ selection, setSelection, onConfirm, showTo
           </div>
 
           <div className="form-actions">
-            <button type="submit" className="btn btn-gold">Confirm Booking</button>
+            <button type="submit" className="btn btn-gold" disabled={saving}>
+              {saving ? 'Booking...' : 'Confirm Booking'}
+            </button>
             <button type="reset" className="btn btn-outline-dark">Reset</button>
           </div>
         </form>

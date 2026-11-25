@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import MatchCard from './MatchCard'
-import { MATCHES, TEAMS, formatDate, formatINR } from '../data'
+import { TEAMS, formatDate, formatINR } from '../data'
 
-export default function Schedule({ onBook, selectedId, showToast }) {
+export default function Schedule({ matches, loading, onBook, selectedId, showToast }) {
   const [team, setTeam] = useState('All')
   const [view, setView] = useState('grid') // grid | list | table
 
   const filtered =
-    team === 'All' ? MATCHES : MATCHES.filter((m) => m.teams.includes(team))
+    team === 'All' ? matches : matches.filter((m) => m.teams.includes(team))
 
   const changeTeam = (value) => {
     setTeam(value)
@@ -16,7 +16,9 @@ export default function Schedule({ onBook, selectedId, showToast }) {
 
   return (
     <section className="section" id="matches">
-      <h2>Match Schedule</h2>
+      <h2>
+        Match Schedule <span className="live-pill">● Live seats</span>
+      </h2>
 
       <div className="toolbar">
         <label className="field-inline">
@@ -40,7 +42,10 @@ export default function Schedule({ onBook, selectedId, showToast }) {
         </div>
       </div>
 
-      {filtered.length === 0 && <p className="empty">No matches for this team.</p>}
+      {loading && <p className="empty">Loading matches...</p>}
+      {!loading && filtered.length === 0 && (
+        <p className="empty">No matches found. Did you run the SQL setup in Supabase?</p>
+      )}
 
       {view !== 'table' && (
         <div className={`match-grid ${view === 'list' ? 'as-list' : ''}`}>
@@ -62,6 +67,7 @@ export default function Schedule({ onBook, selectedId, showToast }) {
                 <th>General</th>
                 <th>Premium</th>
                 <th>VIP</th>
+                <th>Seats Left</th>
                 <th></th>
               </tr>
             </thead>
@@ -75,8 +81,15 @@ export default function Schedule({ onBook, selectedId, showToast }) {
                   <td>{formatINR(m.prices.General)}</td>
                   <td>{formatINR(m.prices.Premium)}</td>
                   <td>{formatINR(m.prices.VIP)}</td>
+                  <td>{m.availableSeats <= 0 ? 'Sold out' : m.availableSeats}</td>
                   <td>
-                    <button className="btn btn-gold btn-sm" onClick={() => onBook(m)}>Book</button>
+                    <button
+                      className="btn btn-gold btn-sm"
+                      disabled={m.availableSeats <= 0}
+                      onClick={() => onBook(m)}
+                    >
+                      Book
+                    </button>
                   </td>
                 </tr>
               ))}

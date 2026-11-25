@@ -251,3 +251,14 @@ legend { font-weight: 600; color: var(--primary); padding: 0 6px; font-size: 0.9
   .field-inline select { width: 100%; }
   .section { padding-top: 48px; }
 }
+
+/* ---------- Live seats (Supabase activity) ---------- */
+.live-pill {
+  display: inline-block; vertical-align: middle; margin-left: 10px;
+  font-size: 0.75rem; font-weight: 700; color: #12a15f;
+  background: rgba(18, 161, 95, 0.12); padding: 3px 10px; border-radius: 999px;
+}
+.seats-left { margin: 0; font-weight: 700; font-size: 0.9rem; color: #12a15f; }
+.seats-left.low { color: var(--accent-dark); }
+.seats-left.out { color: var(--danger); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
